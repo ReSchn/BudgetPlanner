@@ -1,169 +1,260 @@
-# 💰 Budgettracker
+# 💰 BudgetPlanner
 
-A modern, intuitive personal finance tracker built with React, TypeScript, and Supabase. Take control of your finances with powerful budgeting tools, expense tracking, and insightful analytics.
+Ein moderner, intuitiver Finanztracker für persönliches Budgetmanagement. Entwickelt mit React, TypeScript, Vite und Supabase. Behalte die Kontrolle über deine Finanzen mit leistungsstarken Budgetierungs-Tools, Ausgabenverfolgung und aussagekräftigen Analytics.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![BudgetPlanner](https://img.shields.io/badge/Status-Active-brightgreen)
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)
-![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?logo=supabase&logoColor=white)
 
 ## ✨ Features
 
-- 📊 **Monthly Budget Planning** - Set and manage budgets for different categories
-- 💸 **Expense Tracking** - Quick and easy expense recording with categories
-- 📈 **Visual Analytics** - Beautiful charts and graphs to understand spending patterns
-- 🏦 **Multi-Category Support** - Customize categories for your lifestyle (rent, groceries, entertainment, etc.)
-- 📱 **Responsive Design** - Works perfectly on desktop and mobile devices
-- 🔒 **Secure Authentication** - Personal data protection with Supabase Auth
-- 📅 **Historical Data** - Track trends and compare months over time
-- 🎯 **Savings Goals** - Monitor your progress toward financial goals
+### 📊 **Dashboard & Übersicht**
 
-## 🚀 Tech Stack
+- Monatliche Budgetübersicht auf einen Blick
+- Aktuelle Ausgaben vs. geplantes Budget
+- Spar-Rate Berechnung mit detaillierter Aufschlüsselung
+- Schnellzugriff auf wichtigste Funktionen
 
-- **Frontend:** React 18, TypeScript, Vite
-- **UI Framework:** shadcn/ui + Tailwind CSS
-- **Backend:** Supabase (PostgreSQL, Auth, Real-time)
-- **Charts:** Recharts
-- **Routing:** React Router
-- **State Management:** React Context + Custom Hooks
+### 💸 **Ausgabenverfolgung**
 
-## 📦 Installation
+- Einfache und schnelle Ausgabenerfassung
+- Kategoriezuordnung mit individuellen Farben
+- Datum und Beschreibung für jede Transaktion
+- Bearbeitung und Löschung bestehender Ausgaben
 
-### Prerequisites
+### 📂 **Kategorie-Management**
 
-- Node.js (version 18 or higher)
-- npm or yarn
-- Supabase account
+- Erstelle benutzerdefinierte Ausgabenkategorien
+- Individuelle Farbcodierung für bessere Übersicht
+- Standard-Budgets pro Kategorie
+- Aktivierung/Deaktivierung von Kategorien
 
-### Setup
+### 💰 **Budget-Planung**
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/[your-username]/budgettracker.git
-   cd budgettracker
-   ```
+- Monatliche Einkommensplanung
+- Budget-Zuteilung pro Kategorie
+- Geplant vs. Ist-Vergleich
+- Automatische Berechnung verbleibendes Budget
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+### 📈 **Analytics & Auswertungen**
 
-3. **Set up environment variables**
-   ```bash
-   cp .env.example .env.local
-   ```
-   
-   Fill in your Supabase credentials:
-   ```env
-   VITE_SUPABASE_URL=your_supabase_project_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
+- **Ausgaben-Trend**: Liniendiagramm der monatlichen Entwicklung
+- **Kategorie-Vergleich**: Balkendiagramm Geplant vs. Tatsächlich
+- **Top-Kategorien**: Ranking der höchsten Ausgabenbereiche
+- **Historischer Vergleich**: Gestapeltes Balkendiagramm über 12 Monate
+- Detaillierte Statistiken und Trend-Analysen
 
-4. **Set up the database**
-   - Run the SQL scripts in the `migrations/` folder in your Supabase SQL editor
-   - Or use the Supabase CLI: `supabase db push`
+### 🔒 **Sicherheit & Authentifizierung**
 
-5. **Start the development server**
-   ```bash
-   npm run dev
-   ```
+- Sichere Benutzeranmeldung über Supabase Auth
+- Row Level Security (RLS) für Datenschutz
+- Persönliche Daten nur für eigenen Account sichtbar
 
-6. **Open your browser**
-   Navigate to `http://localhost:5173`
+## 🛠️ Tech Stack
 
-## 🗃️ Database Schema
+### **Frontend**
 
-The application uses the following main tables:
+- **React 18** - UI Framework
+- **TypeScript** - Type Safety
+- **Vite** - Build Tool & Dev Server
+- **Tailwind CSS** - Styling
+- **shadcn/ui** - UI Component Library
+- **Recharts** - Datenvisualisierung
 
-- `categories` - Budget categories (rent, food, entertainment, etc.)
-- `monthly_budgets` - Planned budget amounts per category per month
-- `monthly_income` - Monthly income tracking
-- `expenses` - Individual expense records
+### **Backend & Database**
 
-Detailed schema and migrations are available in the `/migrations` folder.
+- **Supabase** - Backend-as-a-Service
+  - PostgreSQL Database
+  - Authentication
+  - Row Level Security
+  - Real-time subscriptions
 
-## 🛠️ Development
+### **Routing & State**
 
-### Project Structure
+- **React Router** - Client-side Routing
+- **React Context** - State Management
+- **Custom Hooks** - Geschäftslogik
+
+## 🚀 Installation & Setup
+
+### **Voraussetzungen**
+
+- Node.js (Version 18 oder höher)
+- npm oder yarn
+- Supabase Account
+
+### **1. Repository klonen**
+
+```bash
+git clone https://github.com/ReSchn/BudgetPlanner.git
+cd BudgetPlanner
+```
+
+### **2. Dependencies installieren**
+
+```bash
+npm install
+```
+
+### **3. Umgebungsvariablen konfigurieren**
+
+```bash
+cp .env.example .env.local
+```
+
+Fülle deine Supabase Credentials ein:
+
+```env
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### **4. Datenbank Setup**
+
+Führe die SQL-Scripte in deinem Supabase SQL Editor aus:
+
+```sql
+-- Erstelle die Tabellen (siehe migrations/ Ordner)
+-- Oder verwende Supabase CLI:
+supabase db push
+```
+
+### **5. Development Server starten**
+
+```bash
+npm run dev
+```
+
+### **6. Öffne die Anwendung**
+
+Navigiere zu `http://localhost:5173`
+
+## 📁 Projektstruktur
 
 ```
 src/
-├── components/          # Reusable UI components
-│   ├── ui/             # shadcn/ui components
-│   ├── forms/          # Form components
-│   ├── charts/         # Chart components
-│   └── layout/         # Layout components
-├── pages/              # Page components
-│   ├── dashboard/      # Dashboard page
-│   ├── categories/     # Categories management
-│   ├── budget/         # Budget setup
-│   ├── expenses/       # Expense tracking
-│   └── analytics/      # Analytics and reports
-├── hooks/              # Custom React hooks
-├── utils/              # Utility functions
-├── types/              # TypeScript type definitions
-└── lib/                # External library configurations
+├── components/          # Wiederverwendbare UI Komponenten
+│   ├── ui/             # shadcn/ui Basis-Komponenten
+│   ├── forms/          # Formular-Komponenten
+│   └── layout/         # Layout-Komponenten (Sidebar, AppLayout)
+├── pages/              # Hauptseiten-Komponenten
+│   ├── Dashboard.tsx   # Dashboard-Übersicht
+│   ├── Categories.tsx  # Kategorie-Management
+│   ├── Budget.tsx      # Budget-Planung
+│   ├── Expenses.tsx    # Ausgaben-Tracking
+│   └── Analytics.tsx   # Auswertungen & Charts
+├── hooks/              # Custom React Hooks
+│   ├── useCategories.ts    # Kategorie-Management
+│   ├── useExpenses.ts      # Ausgaben-Verwaltung
+│   └── useMonthlyBudgets.ts # Budget-Logik
+├── context/            # React Context für Auth
+├── lib/                # Externe Library-Konfigurationen
+├── utils/              # Utility-Funktionen
+└── types/              # TypeScript Type-Definitionen
 ```
 
-### Available Scripts
+## 📊 Datenbank Schema
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint
-- `npm run type-check` - Run TypeScript type checking
+Die Anwendung verwendet folgende Haupttabellen:
 
-### Git Workflow
+- **`categories`** - Ausgabenkategorien (Miete, Lebensmittel, etc.)
+- **`monthly_budgets`** - Monatliche Budget-Planung mit Einkommen
+- **`budget_items`** - Geplante Beträge pro Kategorie pro Monat
+- **`expenses`** - Einzelne Ausgaben-Datensätze
 
-1. Create a feature branch: `git checkout -b feature/your-feature-name`
-2. Make your changes and commit: `git commit -m "feat: add new feature"`
-3. Push to your branch: `git push origin feature/your-feature-name`
-4. Create a Pull Request
+Detailliertes Schema findest du im `/migrations` Ordner.
 
-We follow [Conventional Commits](https://www.conventionalcommits.org/) for commit messages.
+## 🎯 Hauptfunktionen im Detail
+
+### **Dashboard**
+
+- Übersicht aktueller Monat
+- Spar-Rate mit intelligenter Berechnung
+- Schnelle Ausgaben-Erfassung
+- Top-Kategorien Anzeige
+
+### **Ausgaben-Management**
+
+- Drag & Drop für einfache Bedienung
+- Kategoriefilter und Sortierung
+- Bearbeitung einzelner Transaktionen
+- Monatliche Übersichten
+
+### **Budget-Planung**
+
+- Flexibles Einkommens-Management
+- Kategorie-basierte Budget-Verteilung
+- Automatische Berechnungen
+- Überschreitungs-Warnungen
+
+### **Analytics-Dashboard**
+
+- **Ausgaben-Trend**: 6-Monats-Verlauf mit echten vs. Sparen-Ausgaben
+- **Kategorie-Vergleich**: Detaillierte Soll/Ist-Analyse mit Tooltips
+- **Historische Auswertung**: 12-Monats-Vergleich nach Kategorien
+- Responsive Charts mit Recharts-Integration
+
+## 🔧 Verfügbare Scripts
+
+```bash
+npm run dev          # Development Server starten
+npm run build        # Produktions-Build erstellen
+npm run preview      # Produktions-Build lokal testen
+npm run lint         # ESLint ausführen
+npm run type-check   # TypeScript Typen prüfen
+```
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting a Pull Request.
+Beiträge sind willkommen! Bitte beachte:
 
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
+1. Fork das Repository
+2. Erstelle einen Feature Branch: `git checkout -b feature/new-feature`
+3. Committe deine Änderungen: `git commit -m "feat: add new feature"`
+4. Push den Branch: `git push origin feature/new-feature`
+5. Erstelle einen Pull Request
 
-## 📝 License
+Wir folgen [Conventional Commits](https://www.conventionalcommits.org/) für Commit-Nachrichten.
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## 📄 Lizenz
 
-## 🎯 Roadmap
+Dieses Projekt steht unter der MIT Lizenz - siehe [LICENSE](LICENSE) Datei für Details.
 
-- [ ] **Phase 1:** Core functionality (budget setup, expense tracking)
-- [ ] **Phase 2:** Advanced analytics and reporting
-- [ ] **Phase 3:** Mobile app (React Native)
-- [ ] **Phase 4:** Collaborative budgeting (family/shared accounts)
-- [ ] **Phase 5:** Bank integration and automatic categorization
+## 🚧 Roadmap
 
-## 📞 Support
+### **Phase 1** ✅ **Fertig**
 
-If you have any questions or need help, please:
+- Core Funktionalität (Budget-Setup, Ausgaben-Tracking)
+- Basis Analytics mit Recharts
+- Responsive Design
 
-1. Check the [Issues](https://github.com/[your-username]/budgettracker/issues) for existing discussions
-2. Create a new issue with detailed information
-3. Join our [Discussions](https://github.com/[your-username]/budgettracker/discussions) for general questions
+### **Phase 2** 🔄 **Geplant**
 
-## 📸 Screenshots
+- PDF Export für Reports
+- Erweiterte Filteroptionen
+- Bank-CSV Import
 
-*Screenshots will be added as the application develops*
+### **Phase 3** 📋 **Zukunft**
 
-## 🙏 Acknowledgments
+- Mobile App (React Native)
+- Geteilte Budgets (Familie/WG)
+- KI-basierte Ausgaben-Kategorisierung
 
-- [shadcn/ui](https://ui.shadcn.com/) for the beautiful UI components
-- [Supabase](https://supabase.com/) for the backend infrastructure
-- [Recharts](https://recharts.org/) for the data visualization
-- [Lucide Icons](https://lucide.dev/) for the icon set
+## 💬 Support
+
+Falls du Fragen hast oder Hilfe benötigst:
+
+- Erstelle ein [Issue](https://github.com/ReSchn/BudgetPlanner/issues) für Bugs oder Feature-Requests
+- Starte eine [Discussion](https://github.com/ReSchn/BudgetPlanner/discussions) für allgemeine Fragen
+
+## 🙏 Credits
+
+- [shadcn/ui](https://ui.shadcn.com/) für die wunderschönen UI Komponenten
+- [Supabase](https://supabase.com/) für die Backend-Infrastruktur
+- [Recharts](https://recharts.org/) für die Datenvisualisierung
+- [Lucide Icons](https://lucide.dev/) für das Icon-Set
 
 ---
 
-Made with ❤️ for better financial management
+_Made with ❤️ for better financial management_
