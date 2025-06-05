@@ -41,6 +41,18 @@ interface BudgetItemWithCategory extends BudgetItem {
   category_color: string | null;
 }
 
+// NEU: Interface für monatliche Ausgaben
+interface MonthlyExpense {
+  id: number;
+  user_id: string;
+  category_id: number;
+  amount: number;
+  description: string | null;
+  expense_date: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // Hook Return Interface
 interface UseMonthlyBudgetsReturn {
   currentBudget: MonthlyBudget | null;
@@ -58,7 +70,8 @@ interface UseMonthlyBudgetsReturn {
     amount: number
   ) => Promise<void>;
   getCurrentMonthBudget: (month: string) => Promise<void>;
-  getAvailableBudgetMonths: () => Promise<string[]>; // NEU
+  getAvailableBudgetMonths: () => Promise<string[]>;
+  getMonthlyExpenses: (month: string) => Promise<MonthlyExpense[]>; // NEU
 }
 
 export function useMonthlyBudgets(): UseMonthlyBudgetsReturn {
@@ -79,6 +92,49 @@ export function useMonthlyBudgets(): UseMonthlyBudgetsReturn {
     const month = (now.getMonth() + 1).toString().padStart(2, '0');
     return `${year}-${month}`;
   };
+
+  // NEU: Ausgaben für einen bestimmten Monat laden
+  const getMonthlyExpenses = useCallback(
+    async (month: string): Promise<MonthlyExpense[]> => {
+      if (!user) {
+        return [];
+      }
+
+      try {
+        // Korrekte Berechnung von Monatsanfang und -ende
+        const [year, monthNum] = month.split('-').map(Number); // "2025-06" → [2025, 6]
+
+        // Ersten Tag des Monats
+        const startDate = new Date(year, monthNum - 1, 1); // Monat ist 0-basiert
+
+        // Ersten Tag des NÄCHSTEN Monats
+        const endDate = new Date(year, monthNum, 1); // Automatisch korrektes Ende
+
+        // Als ISO-Strings für Supabase
+        const startDateString = startDate.toISOString().split('T')[0]; // "2025-06-01"
+        const endDateString = endDate.toISOString().split('T')[0]; // "2025-07-01"
+
+        // Supabase Query
+        const { data, error: fetchError } = await supabase
+          .from('expenses')
+          .select('*')
+          .eq('user_id', user.id) // Nur vom aktuellen User
+          .gte('expense_date', startDateString) // >= Monatsanfang
+          .lt('expense_date', endDateString) // < Nächster Monat
+          .order('expense_date', { ascending: false }); // Neueste zuerst
+
+        if (fetchError) {
+          throw fetchError;
+        }
+
+        return data || [];
+      } catch (err) {
+        console.error('❌ Fehler beim Laden der monatlichen Ausgaben:', err);
+        return [];
+      }
+    },
+    [user]
+  );
 
   // Budget für einen bestimmten Monat laden
   const getCurrentMonthBudget = useCallback(
@@ -296,6 +352,7 @@ export function useMonthlyBudgets(): UseMonthlyBudgetsReturn {
     updateIncome,
     setBudgetForCategory,
     getCurrentMonthBudget,
-    getAvailableBudgetMonths, // NEU
+    getAvailableBudgetMonths,
+    getMonthlyExpenses, // NEU
   };
 }

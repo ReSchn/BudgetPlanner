@@ -1,5 +1,17 @@
 import { useState, useEffect } from 'react';
 import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  Legend,
+} from 'recharts';
+import {
   Card,
   CardContent,
   CardHeader,
@@ -16,13 +28,48 @@ interface CategoryStats {
   color: string | null;
 }
 
+// Interface für Trend-Daten
+interface TrendData {
+  month: string;
+  monthLabel: string;
+  totalExpenses: number;
+  realExpenses: number;
+}
+
+// Interface für Kategorie-Vergleich
+interface CategoryComparisonData {
+  categoryName: string;
+  planned: number;
+  actual: number;
+  color: string;
+  shortName: string; // Für bessere Darstellung bei langen Namen
+}
+
+// Interface für historische Daten
+interface HistoricalData {
+  month: string;
+  monthLabel: string;
+  [categoryName: string]: string | number; // Dynamische Kategorie-Felder
+}
+
 export function Analytics() {
-  const { getAvailableBudgetMonths } = useMonthlyBudgets();
+  const {
+    getAvailableBudgetMonths,
+    getMonthlyExpenses,
+    currentBudget,
+    budgetItems,
+  } = useMonthlyBudgets();
   const { categories } = useCategories();
   const { expenses } = useExpenses();
 
-  // State für verfügbare Monate
-  const [availableMonths, setAvailableMonths] = useState<string[]>([]);
+  // State für Trend-Daten und Diagramme
+  const [trendData, setTrendData] = useState<TrendData[]>([]);
+  const [chartLoading, setChartLoading] = useState(true);
+  const [categoryComparisonData, setCategoryComparisonData] = useState<
+    CategoryComparisonData[]
+  >([]);
+  const [historicalData, setHistoricalData] = useState<HistoricalData[]>([]);
+  const [historicalLoading, setHistoricalLoading] = useState(true);
 
   // Hilfsfunktion: Monatsnamen formatieren
   const formatMonthName = (monthString: string): string => {
@@ -34,14 +81,185 @@ export function Analytics() {
     });
   };
 
-  // Verfügbare Monate laden
+  // Historische Daten laden
   useEffect(() => {
-    const loadData = async () => {
-      const months = await getAvailableBudgetMonths();
-      setAvailableMonths(months.slice(0, 6)); // Letzten 6 Monate
+    const loadHistoricalData = async () => {
+      try {
+        setHistoricalLoading(true);
+
+        const months = await getAvailableBudgetMonths();
+        const last12Months = months.slice(0, 12); // Letzten 12 Monate
+
+        if (last12Months.length === 0 || categories.length === 0) {
+          setHistoricalData([]);
+          return;
+        }
+
+        // Alle Kategorien sammeln die in den letzten 12 Monaten verwendet wurden
+        const allUsedCategories = new Set<number>();
+
+        // Erst alle verwendeten Kategorien finden
+        for (const month of last12Months) {
+          const monthlyExpenses = await getMonthlyExpenses(month);
+          monthlyExpenses.forEach((expense) => {
+            allUsedCategories.add(expense.category_id);
+          });
+        }
+
+        // Kategorien-Mapping erstellen
+        const categoryMapping = new Map<
+          number,
+          { name: string; color: string }
+        >();
+        categories.forEach((cat) => {
+          if (allUsedCategories.has(cat.id)) {
+            categoryMapping.set(cat.id, {
+              name: cat.name,
+              color: cat.color || '#3b82f6',
+            });
+          }
+        });
+
+        // Historische Daten für jeden Monat berechnen
+        const historicalDataPromises = last12Months.map(async (month) => {
+          const monthlyExpenses = await getMonthlyExpenses(month);
+
+          // Ausgaben nach Kategorien gruppieren
+          const categoryExpenses: Record<string, number> = {};
+
+          // Initialisiere alle verwendeten Kategorien mit 0
+          categoryMapping.forEach((catInfo) => {
+            categoryExpenses[catInfo.name] = 0;
+          });
+
+          // Summiere tatsächliche Ausgaben
+          monthlyExpenses.forEach((expense) => {
+            const categoryInfo = categoryMapping.get(expense.category_id);
+            if (categoryInfo) {
+              categoryExpenses[categoryInfo.name] += expense.amount;
+            }
+          });
+
+          return {
+            month,
+            monthLabel: formatMonthName(month),
+            ...categoryExpenses,
+          };
+        });
+
+        const resolvedHistoricalData = await Promise.all(
+          historicalDataPromises
+        );
+
+        // Daten umkehren, damit ältester Monat links steht
+        setHistoricalData(resolvedHistoricalData.reverse());
+      } catch (error) {
+        console.error('❌ Fehler beim Laden der historischen Daten:', error);
+      } finally {
+        setHistoricalLoading(false);
+      }
     };
-    loadData();
-  }, [getAvailableBudgetMonths]);
+
+    if (categories.length > 0) {
+      loadHistoricalData();
+    }
+  }, [getAvailableBudgetMonths, getMonthlyExpenses, categories]);
+  // Kategorie-Vergleichsdaten laden
+  useEffect(() => {
+    if (currentBudget && budgetItems.length > 0 && categories.length > 0) {
+      const comparisonData: CategoryComparisonData[] = budgetItems
+        .map((budgetItem) => {
+          // Tatsächliche Ausgaben für diese Kategorie berechnen
+          const actualExpenses = expenses
+            .filter((expense) => expense.category_id === budgetItem.category_id)
+            .reduce((sum, expense) => sum + expense.amount, 0);
+
+          // Kategorie-Details finden
+          const category = categories.find(
+            (cat) => cat.id === budgetItem.category_id
+          );
+          const categoryName = category?.name || 'Unbekannt';
+
+          // Kurzen Namen für die Anzeige erstellen (max 12 Zeichen)
+          const shortName =
+            categoryName.length > 12
+              ? categoryName.substring(0, 12) + '...'
+              : categoryName;
+
+          return {
+            categoryName,
+            planned: budgetItem.planned_amount,
+            actual: actualExpenses,
+            color: category?.color || '#3b82f6',
+            shortName,
+          };
+        })
+        .filter((item) => item.planned > 0); // Nur Kategorien mit geplanten Ausgaben
+
+      setCategoryComparisonData(comparisonData);
+    } else {
+      setCategoryComparisonData([]);
+    }
+  }, [currentBudget, budgetItems, categories, expenses]);
+  // Verfügbare Monate und Trend-Daten laden
+  useEffect(() => {
+    const loadTrendData = async () => {
+      try {
+        setChartLoading(true);
+
+        const months = await getAvailableBudgetMonths();
+        const last6Months = months.slice(0, 6);
+
+        if (last6Months.length === 0) {
+          setTrendData([]);
+          return;
+        }
+
+        // Trend-Daten für die letzten 6 Monate berechnen
+        const trendDataPromises = last6Months.map(async (month) => {
+          const monthlyExpenses = await getMonthlyExpenses(month);
+
+          // Gesamtausgaben für diesen Monat
+          const totalExpenses = monthlyExpenses.reduce(
+            (sum, expense) => sum + expense.amount,
+            0
+          );
+
+          // Sparen-Kategorien für diesen Monat finden
+          const sparenExpenses = monthlyExpenses
+            .filter((expense) => {
+              const category = categories.find(
+                (cat) => cat.id === expense.category_id
+              );
+              return category && category.name.toLowerCase().includes('spar');
+            })
+            .reduce((sum, expense) => sum + expense.amount, 0);
+
+          // Echte Ausgaben = Alle Ausgaben - Sparen
+          const realExpenses = totalExpenses - sparenExpenses;
+
+          return {
+            month,
+            monthLabel: formatMonthName(month),
+            totalExpenses,
+            realExpenses,
+          };
+        });
+
+        const resolvedTrendData = await Promise.all(trendDataPromises);
+        // Daten umkehren, damit ältester Monat links steht
+        setTrendData(resolvedTrendData.reverse());
+      } catch (error) {
+        console.error('❌ Fehler beim Laden der Trend-Daten:', error);
+      } finally {
+        setChartLoading(false);
+      }
+    };
+
+    if (categories.length > 0) {
+      loadTrendData();
+    }
+  }, [getAvailableBudgetMonths, getMonthlyExpenses, categories]);
 
   // Berechnungen für aktuelle Statistiken
   const currentMonthExpenses = expenses.reduce(
@@ -84,6 +302,135 @@ export function Analytics() {
   const totalSaved = leftOver + sparenCategoryExpenses;
   const savingsRate = (totalSaved / estimatedIncome) * 100;
 
+  // TypeScript Interface für Tooltip Props
+  interface TooltipProps {
+    active?: boolean;
+    payload?: Array<{
+      color: string;
+      name: string;
+      value: number;
+      dataKey: string;
+    }>;
+    label?: string;
+  }
+
+  // Custom Tooltip für das Liniendiagramm
+  const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className='bg-white p-4 border border-gray-200 rounded-lg shadow-lg'>
+          <p className='font-semibold text-gray-900 mb-2'>{label}</p>
+          {payload.map((entry, index) => (
+            <p key={index} style={{ color: entry.color }} className='text-sm'>
+              {entry.name}: €{entry.value.toFixed(2)}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Custom Tooltip für Balkendiagramm
+  const BarTooltip = ({ active, payload, label }: TooltipProps) => {
+    if (active && payload && payload.length) {
+      const planned = payload.find((p) => p.dataKey === 'planned')?.value || 0;
+      const actual = payload.find((p) => p.dataKey === 'actual')?.value || 0;
+      const difference = actual - planned;
+      const percentage = planned > 0 ? (actual / planned) * 100 : 0;
+
+      return (
+        <div className='bg-white p-4 border border-gray-200 rounded-lg shadow-lg min-w-48'>
+          <p className='font-semibold text-gray-900 mb-2'>{label}</p>
+          <div className='space-y-1 text-sm'>
+            <p className='text-blue-600'>Geplant: €{planned.toFixed(2)}</p>
+            <p className='text-orange-600'>Tatsächlich: €{actual.toFixed(2)}</p>
+            <div className='border-t pt-1 mt-2'>
+              <p
+                className={`font-medium ${
+                  difference >= 0 ? 'text-red-600' : 'text-green-600'
+                }`}
+              >
+                Differenz: {difference >= 0 ? '+' : ''}€{difference.toFixed(2)}
+              </p>
+              <p className='text-gray-600'>
+                Verbrauch: {percentage.toFixed(0)}%
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Custom Tooltip für historisches Diagramm
+  const HistoricalTooltip = ({ active, payload, label }: TooltipProps) => {
+    if (active && payload && payload.length) {
+      const total = payload.reduce((sum, entry) => sum + (entry.value || 0), 0);
+
+      return (
+        <div className='bg-white p-4 border border-gray-200 rounded-lg shadow-lg max-w-xs'>
+          <p className='font-semibold text-gray-900 mb-2'>{label}</p>
+          <div className='space-y-1 text-sm max-h-48 overflow-y-auto'>
+            {payload
+              .filter((entry) => (entry.value || 0) > 0)
+              .sort((a, b) => (b.value || 0) - (a.value || 0))
+              .map((entry, index) => (
+                <p
+                  key={index}
+                  style={{ color: entry.color }}
+                  className='flex justify-between'
+                >
+                  <span>{entry.name}:</span>
+                  <span className='font-medium'>
+                    €{(entry.value || 0).toFixed(0)}
+                  </span>
+                </p>
+              ))}
+            <div className='border-t pt-1 mt-2'>
+              <p className='font-semibold text-gray-900 flex justify-between'>
+                <span>Gesamt:</span>
+                <span>€{total.toFixed(0)}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Hilfsfunktion: Generiere verschiedene Farben für Kategorien
+  const generateCategoryColors = (
+    categories: Array<{ name: string; color: string }>
+  ) => {
+    const defaultColors = [
+      '#ef4444',
+      '#f97316',
+      '#f59e0b',
+      '#eab308',
+      '#84cc16',
+      '#22c55e',
+      '#10b981',
+      '#14b8a6',
+      '#06b6d4',
+      '#0ea5e9',
+      '#3b82f6',
+      '#6366f1',
+      '#8b5cf6',
+      '#a855f7',
+      '#d946ef',
+      '#ec4899',
+      '#f43f5e',
+    ];
+
+    return categories.map((cat, index) => ({
+      name: cat.name,
+      color: cat.color || defaultColors[index % defaultColors.length],
+    }));
+  };
+
   return (
     <div className='space-y-6'>
       {/* Page Header */}
@@ -98,54 +445,234 @@ export function Analytics() {
 
       {/* Grid Layout */}
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-        {/* Ausgaben-Trend */}
+        {/* Ausgaben-Trend - IMPLEMENTIERT mit Recharts */}
         <Card>
           <CardHeader>
             <CardTitle>Ausgaben-Trend</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className='h-64 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center'>
-              <div className='text-center text-gray-500'>
-                <div className='text-4xl mb-2'>📈</div>
-                <div className='font-medium'>Liniendiagramm:</div>
-                <div className='text-sm'>Monatliche Ausgaben</div>
-                <div className='text-sm'>der letzten 6 Monate</div>
-                {availableMonths.length > 0 && (
-                  <div className='text-xs mt-2 text-blue-600'>
-                    Daten für: {availableMonths.map(formatMonthName).join(', ')}
-                  </div>
-                )}
+            {chartLoading ? (
+              <div className='h-64 flex items-center justify-center'>
+                <div className='text-center text-gray-500'>
+                  <div className='animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2'></div>
+                  <p className='text-sm'>Lade Trend-Daten...</p>
+                </div>
               </div>
-            </div>
+            ) : trendData.length === 0 ? (
+              <div className='h-64 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center'>
+                <div className='text-center text-gray-500'>
+                  <div className='text-4xl mb-2'>📈</div>
+                  <p className='font-medium'>Noch keine Daten verfügbar</p>
+                  <p className='text-sm'>
+                    Erstelle Budgets und Ausgaben um Trends zu sehen
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className='h-64'>
+                <ResponsiveContainer width='100%' height='100%'>
+                  <LineChart
+                    data={trendData}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 60 }}
+                  >
+                    <CartesianGrid strokeDasharray='3 3' stroke='#f0f0f0' />
+                    <XAxis
+                      dataKey='monthLabel'
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      angle={-45}
+                      textAnchor='end'
+                      height={60}
+                      interval={0}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      tickFormatter={(value) => `€${value.toLocaleString()}`}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+
+                    {/* Linie für Gesamtausgaben */}
+                    <Line
+                      type='monotone'
+                      dataKey='totalExpenses'
+                      stroke='#ef4444'
+                      strokeWidth={3}
+                      dot={{ fill: '#ef4444', strokeWidth: 2, r: 5 }}
+                      activeDot={{ r: 7, stroke: '#ef4444', strokeWidth: 2 }}
+                      name='Gesamtausgaben'
+                    />
+
+                    {/* Linie für echte Ausgaben (ohne Sparen) */}
+                    <Line
+                      type='monotone'
+                      dataKey='realExpenses'
+                      stroke='#f97316'
+                      strokeWidth={2}
+                      strokeDasharray='5 5'
+                      dot={{ fill: '#f97316', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, stroke: '#f97316', strokeWidth: 2 }}
+                      name='Echte Ausgaben'
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Trend-Statistiken */}
+            {trendData.length > 1 && (
+              <div className='mt-4 pt-4 border-t border-gray-200'>
+                <div className='grid grid-cols-2 gap-4 text-sm'>
+                  <div className='text-center'>
+                    <p className='text-gray-600'>Durchschnitt/Monat</p>
+                    <p className='font-semibold text-red-600'>
+                      €
+                      {(
+                        trendData.reduce(
+                          (sum, item) => sum + item.totalExpenses,
+                          0
+                        ) / trendData.length
+                      ).toFixed(0)}
+                    </p>
+                  </div>
+                  <div className='text-center'>
+                    <p className='text-gray-600'>Trend</p>
+                    <p className='font-semibold'>
+                      {trendData[trendData.length - 1]?.totalExpenses >
+                      trendData[0]?.totalExpenses ? (
+                        <span className='text-red-600'>↗ Steigend</span>
+                      ) : (
+                        <span className='text-green-600'>↘ Fallend</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Kategorie-Vergleich */}
+        {/* Kategorie-Vergleich - IMPLEMENTIERT mit Recharts */}
         <Card>
           <CardHeader>
             <CardTitle>Kategorie-Vergleich</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className='h-64 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center'>
-              <div className='text-center text-gray-500'>
-                <div className='text-4xl mb-2'>📊</div>
-                <div className='font-medium'>Balkendiagramm:</div>
-                <div className='text-sm'>Geplant vs. Ist</div>
-                <div className='text-sm'>aktueller Monat</div>
-                {categoriesWithExpenses.length > 0 && (
-                  <div className='text-xs mt-2 text-blue-600'>
-                    {categoriesWithExpenses.length} aktive Kategorien
-                  </div>
-                )}
+            {!currentBudget ? (
+              <div className='h-64 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center'>
+                <div className='text-center text-gray-500'>
+                  <div className='text-4xl mb-2'>📊</div>
+                  <p className='font-medium'>Kein Budget vorhanden</p>
+                  <p className='text-sm'>
+                    Erstelle ein Budget für den aktuellen Monat
+                  </p>
+                </div>
               </div>
-            </div>
+            ) : categoryComparisonData.length === 0 ? (
+              <div className='h-64 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center'>
+                <div className='text-center text-gray-500'>
+                  <div className='text-4xl mb-2'>📊</div>
+                  <p className='font-medium'>Keine Kategorien geplant</p>
+                  <p className='text-sm'>Füge Budgets für Kategorien hinzu</p>
+                </div>
+              </div>
+            ) : (
+              <div className='h-64'>
+                <ResponsiveContainer width='100%' height='100%'>
+                  <BarChart
+                    data={categoryComparisonData}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                  >
+                    <CartesianGrid strokeDasharray='3 3' stroke='#f0f0f0' />
+                    <XAxis
+                      dataKey='shortName'
+                      tick={{ fontSize: 11, fill: '#6b7280' }}
+                      angle={-45}
+                      textAnchor='end'
+                      height={60}
+                      interval={0}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      tickFormatter={(value) => `€${value.toLocaleString()}`}
+                    />
+                    <Tooltip content={<BarTooltip />} />
+                    <Legend
+                      wrapperStyle={{ paddingTop: '20px' }}
+                      iconType='rect'
+                    />
+
+                    {/* Geplante Ausgaben */}
+                    <Bar
+                      dataKey='planned'
+                      name='Geplant'
+                      fill='#3b82f6'
+                      radius={[2, 2, 0, 0]}
+                    />
+
+                    {/* Tatsächliche Ausgaben */}
+                    <Bar
+                      dataKey='actual'
+                      name='Tatsächlich'
+                      fill='#f97316'
+                      radius={[2, 2, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Budget-Übersicht */}
+            {categoryComparisonData.length > 0 && (
+              <div className='mt-4 pt-4 border-t border-gray-200'>
+                <div className='grid grid-cols-3 gap-4 text-sm text-center'>
+                  <div>
+                    <p className='text-gray-600'>Geplant gesamt</p>
+                    <p className='font-semibold text-blue-600'>
+                      €
+                      {categoryComparisonData
+                        .reduce((sum, item) => sum + item.planned, 0)
+                        .toFixed(0)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className='text-gray-600'>Ausgegeben</p>
+                    <p className='font-semibold text-orange-600'>
+                      €
+                      {categoryComparisonData
+                        .reduce((sum, item) => sum + item.actual, 0)
+                        .toFixed(0)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className='text-gray-600'>Übrig</p>
+                    <p
+                      className={`font-semibold ${
+                        categoryComparisonData.reduce(
+                          (sum, item) => sum + (item.planned - item.actual),
+                          0
+                        ) >= 0
+                          ? 'text-green-600'
+                          : 'text-red-600'
+                      }`}
+                    >
+                      €
+                      {categoryComparisonData
+                        .reduce(
+                          (sum, item) => sum + (item.planned - item.actual),
+                          0
+                        )
+                        .toFixed(0)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Zweite Reihe */}
+      {/* Rest der Komponente bleibt gleich */}
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-        {/* Spar-Rate mit korrigierter Berechnung */}
+        {/* Spar-Rate */}
         <Card>
           <CardHeader>
             <CardTitle>Spar-Rate</CardTitle>
@@ -273,25 +800,182 @@ export function Analytics() {
         </Card>
       </div>
 
-      {/* Historischer Vergleich */}
+      {/* Historischer Vergleich - IMPLEMENTIERT mit Recharts */}
       <Card>
         <CardHeader>
           <CardTitle>Historischer Vergleich</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className='h-80 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center'>
-            <div className='text-center text-gray-500'>
-              <div className='text-4xl mb-2'>📊</div>
-              <div className='font-medium'>Gestapeltes Balkendiagramm:</div>
-              <div className='text-sm'>Monatliche Ausgaben nach Kategorien</div>
-              <div className='text-sm'>über die letzten 12 Monate</div>
-              {availableMonths.length > 0 && (
-                <div className='text-xs mt-2 text-blue-600'>
-                  Verfügbare Monate: {availableMonths.length}
-                </div>
-              )}
+          {historicalLoading ? (
+            <div className='h-80 flex items-center justify-center'>
+              <div className='text-center text-gray-500'>
+                <div className='animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2'></div>
+                <p className='text-sm'>Lade historische Daten...</p>
+              </div>
             </div>
-          </div>
+          ) : historicalData.length === 0 ? (
+            <div className='h-80 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center'>
+              <div className='text-center text-gray-500'>
+                <div className='text-4xl mb-2'>📊</div>
+                <p className='font-medium'>Keine historischen Daten</p>
+                <p className='text-sm'>Sammle Ausgaben über mehrere Monate</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className='h-80'>
+                <ResponsiveContainer width='100%' height='100%'>
+                  <BarChart
+                    data={historicalData}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                  >
+                    <CartesianGrid strokeDasharray='3 3' stroke='#f0f0f0' />
+                    <XAxis
+                      dataKey='monthLabel'
+                      tick={{ fontSize: 11, fill: '#6b7280' }}
+                      angle={-45}
+                      textAnchor='end'
+                      height={60}
+                      interval={0}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      tickFormatter={(value) => `€${value.toLocaleString()}`}
+                    />
+                    <Tooltip content={<HistoricalTooltip />} />
+                    <Legend
+                      wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }}
+                      iconType='rect'
+                    />
+
+                    {/* Dynamische Balken für jede Kategorie */}
+                    {(() => {
+                      // Kategorien aus den Daten extrahieren und sortieren
+                      const categoryNames = new Set<string>();
+                      historicalData.forEach((monthData) => {
+                        Object.keys(monthData).forEach((key) => {
+                          if (key !== 'month' && key !== 'monthLabel') {
+                            categoryNames.add(key);
+                          }
+                        });
+                      });
+
+                      const sortedCategories = Array.from(categoryNames)
+                        .map((name) => {
+                          const category = categories.find(
+                            (cat) => cat.name === name
+                          );
+                          return { name, color: category?.color || '#3b82f6' };
+                        })
+                        .sort((a, b) => {
+                          // Sortiere nach Gesamtausgaben über alle Monate
+                          const totalA = historicalData.reduce(
+                            (sum, month) => sum + (Number(month[a.name]) || 0),
+                            0
+                          );
+                          const totalB = historicalData.reduce(
+                            (sum, month) => sum + (Number(month[b.name]) || 0),
+                            0
+                          );
+                          return totalB - totalA;
+                        });
+
+                      const categoryColors =
+                        generateCategoryColors(sortedCategories);
+
+                      return categoryColors.map((cat) => (
+                        <Bar
+                          key={cat.name}
+                          dataKey={cat.name}
+                          stackId='categories'
+                          fill={cat.color}
+                          name={cat.name}
+                        />
+                      ));
+                    })()}
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Historische Statistiken */}
+              <div className='mt-6 pt-4 border-t border-gray-200'>
+                <div className='grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-center'>
+                  <div>
+                    <p className='text-gray-600'>Monate</p>
+                    <p className='font-semibold text-blue-600'>
+                      {historicalData.length}
+                    </p>
+                  </div>
+                  <div>
+                    <p className='text-gray-600'>Ø pro Monat</p>
+                    <p className='font-semibold text-gray-900'>
+                      €
+                      {(() => {
+                        const totalExpenses = historicalData.reduce(
+                          (sum, month) => {
+                            const monthTotal = Object.keys(month)
+                              .filter(
+                                (key) => key !== 'month' && key !== 'monthLabel'
+                              )
+                              .reduce(
+                                (monthSum, categoryName) =>
+                                  monthSum + (Number(month[categoryName]) || 0),
+                                0
+                              );
+                            return sum + monthTotal;
+                          },
+                          0
+                        );
+                        return (totalExpenses / historicalData.length).toFixed(
+                          0
+                        );
+                      })()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className='text-gray-600'>Höchster Monat</p>
+                    <p className='font-semibold text-red-600'>
+                      €
+                      {(() => {
+                        const monthTotals = historicalData.map((month) => {
+                          return Object.keys(month)
+                            .filter(
+                              (key) => key !== 'month' && key !== 'monthLabel'
+                            )
+                            .reduce(
+                              (sum, categoryName) =>
+                                sum + (Number(month[categoryName]) || 0),
+                              0
+                            );
+                        });
+                        return Math.max(...monthTotals).toFixed(0);
+                      })()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className='text-gray-600'>Niedrigster Monat</p>
+                    <p className='font-semibold text-green-600'>
+                      €
+                      {(() => {
+                        const monthTotals = historicalData.map((month) => {
+                          return Object.keys(month)
+                            .filter(
+                              (key) => key !== 'month' && key !== 'monthLabel'
+                            )
+                            .reduce(
+                              (sum, categoryName) =>
+                                sum + (Number(month[categoryName]) || 0),
+                              0
+                            );
+                        });
+                        return Math.min(...monthTotals).toFixed(0);
+                      })()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -376,15 +1060,18 @@ export function Analytics() {
         </Card>
       )}
 
-      {/* Entwicklungshinweis */}
+      {/* Entwicklungshinweis - Aktualisiert */}
       <Card>
         <CardContent className='pt-6'>
           <div className='text-center text-gray-500'>
-            <p className='font-medium mb-2'>🚧 Charts in Entwicklung</p>
+            <p className='font-medium mb-2'>🎉 Alle Charts implementiert!</p>
             <p className='text-sm'>
-              Die Diagramme werden mit echten Daten gefüllt, sobald mehr
-              historische Daten verfügbar sind. Die Platzhalter zeigen die
-              geplante Struktur der Analytics-Seite.
+              ✅ <strong>Ausgaben-Trend</strong> - Liniendiagramm
+              <br />✅ <strong>Kategorie-Vergleich</strong> - Balkendiagramm
+              <br />✅ <strong>Top-Kategorien</strong> - Bereits als Liste
+              vorhanden
+              <br />✅ <strong>Historischer Vergleich</strong> - Gestapeltes
+              Balkendiagramm
             </p>
           </div>
         </CardContent>

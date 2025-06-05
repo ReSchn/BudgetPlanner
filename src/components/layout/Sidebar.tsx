@@ -21,10 +21,10 @@ export function Sidebar() {
   const { user, signOut } = useAuth();
 
   return (
-    <div className='w-64 bg-slate-800 text-white min-h-screen p-6 flex flex-col'>
+    <div className='w-64 bg-slate-800 text-white h-screen fixed left-0 top-0 p-6 flex flex-col z-10'>
       {/* Logo/Title */}
       <div className='mb-8'>
-        <h2 className='text-xl font-bold'>Budgettracker</h2>
+        <h2 className='text-xl font-bold'>BudgetPlanner</h2>
         <p className='text-slate-400 text-sm mt-1'>{user?.email}</p>
       </div>
 
