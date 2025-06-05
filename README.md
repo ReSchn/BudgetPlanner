@@ -134,24 +134,22 @@ Navigiere zu `http://localhost:5173`
 
 ```
 src/
-├── components/          # Wiederverwendbare UI Komponenten
-│   ├── ui/             # shadcn/ui Basis-Komponenten
-│   ├── forms/          # Formular-Komponenten
-│   └── layout/         # Layout-Komponenten (Sidebar, AppLayout)
-├── pages/              # Hauptseiten-Komponenten
-│   ├── Dashboard.tsx   # Dashboard-Übersicht
-│   ├── Categories.tsx  # Kategorie-Management
-│   ├── Budget.tsx      # Budget-Planung
-│   ├── Expenses.tsx    # Ausgaben-Tracking
-│   └── Analytics.tsx   # Auswertungen & Charts
-├── hooks/              # Custom React Hooks
-│   ├── useCategories.ts    # Kategorie-Management
-│   ├── useExpenses.ts      # Ausgaben-Verwaltung
-│   └── useMonthlyBudgets.ts # Budget-Logik
-├── context/            # React Context für Auth
-├── lib/                # Externe Library-Konfigurationen
-├── utils/              # Utility-Funktionen
-└── types/              # TypeScript Type-Definitionen
+├── components/               # Wiederverwendbare UI Komponenten
+│   ├── auth/                 # Login-Komponenten
+│   ├── ui/                   # shadcn/ui Basis-Komponenten
+│   └── layout/               # Layout-Komponenten (Sidebar, AppLayout)
+├── pages/                    # Hauptseiten-Komponenten
+│   ├── Dashboard.tsx         # Dashboard-Übersicht
+│   ├── Categories.tsx        # Kategorie-Management
+│   ├── Budget.tsx            # Budget-Planung
+│   ├── Expenses.tsx          # Ausgaben-Tracking
+│   └── Analytics.tsx         # Auswertungen & Charts
+├── hooks/                    # Custom React Hooks
+│   ├── useCategories.ts      # Kategorie-Management
+│   ├── useExpenses.ts        # Ausgaben-Verwaltung
+│   └── useMonthlyBudgets.ts  # Budget-Logik
+├── context/                  # React Context für Auth
+└── lib/                      # Externe Library-Konfigurationen
 ```
 
 ## 📊 Datenbank Schema
@@ -246,7 +244,6 @@ Dieses Projekt steht unter der MIT Lizenz - siehe [LICENSE](LICENSE) Datei für 
 Falls du Fragen hast oder Hilfe benötigst:
 
 - Erstelle ein [Issue](https://github.com/ReSchn/BudgetPlanner/issues) für Bugs oder Feature-Requests
-- Starte eine [Discussion](https://github.com/ReSchn/BudgetPlanner/discussions) für allgemeine Fragen
 
 ## 🙏 Credits
 
