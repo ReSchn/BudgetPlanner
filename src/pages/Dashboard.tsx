@@ -9,6 +9,7 @@ import {
 import { useMonthlyBudgets } from '../hooks/useMonthlyBudgets';
 import { useCategories } from '../hooks/useCategories';
 import { useExpenses } from '../hooks/useExpenses';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 export function Dashboard() {
   // Hooks für Daten
@@ -74,6 +75,56 @@ export function Dashboard() {
   const getPlannedForCategory = (categoryId: number): number => {
     const item = budgetItems.find((item) => item.category_id === categoryId);
     return item ? item.planned_amount : 0;
+  };
+
+  // Daten für Kreisdiagramm aufbereiten - Ausgegeben vs. Verbleibend
+  const prepareChartData = () => {
+    const totalPlanned = budgetItems.reduce(
+      (sum, item) => sum + item.planned_amount,
+      0
+    );
+    const totalSpent = expenses.reduce(
+      (sum, expense) => sum + expense.amount,
+      0
+    );
+    const remaining = Math.max(0, totalPlanned - totalSpent); // Nicht negative Werte
+    const overspent = Math.max(0, totalSpent - totalPlanned); // Überzogener Betrag
+
+    const data = [];
+
+    // Ausgegeben (aber nicht überzogen)
+    if (totalSpent > 0 && totalSpent <= totalPlanned) {
+      data.push({
+        name: 'Ausgegeben',
+        value: totalSpent,
+        color: '#ef4444', // Rot
+      });
+    }
+
+    // Verbleibendes Budget
+    if (remaining > 0) {
+      data.push({
+        name: 'Verbleibendes Budget',
+        value: remaining,
+        color: '#10b981', // Grün
+      });
+    }
+
+    // Überzogen (falls Budget überschritten)
+    if (overspent > 0) {
+      data.push({
+        name: 'Ausgegeben',
+        value: totalPlanned > 0 ? totalPlanned : totalSpent, // Geplanter Teil
+        color: '#ef4444', // Rot
+      });
+      data.push({
+        name: 'Überzogen',
+        value: overspent,
+        color: '#dc2626', // Dunkelrot
+      });
+    }
+
+    return data;
   };
 
   return (
@@ -172,19 +223,84 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Budget-Verteilung */}
+        {/* Budget-Verteilung mit echtem Kreisdiagramm */}
         <Card>
           <CardHeader>
-            <CardTitle>Budget-Verteilung</CardTitle>
+            <CardTitle>Budget-Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className='h-48 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center'>
-              <div className='text-center text-gray-500'>
-                <div className='text-4xl mb-2'>📊</div>
-                <div className='font-medium'>Kreisdiagramm:</div>
-                <div className='text-sm'>Budget nach Kategorien</div>
+            {budgetItems.length === 0 || expenses.length === 0 ? (
+              <div className='h-48 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center'>
+                <div className='text-center text-gray-500'>
+                  <div className='text-4xl mb-2'>📊</div>
+                  <div className='font-medium'>Budget-Status</div>
+                  <div className='text-sm'>Erstelle Budget und Ausgaben</div>
+                  <div className='text-sm'>um den Status zu sehen</div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className='h-48'>
+                <ResponsiveContainer width='100%' height='100%'>
+                  <PieChart>
+                    <Pie
+                      data={prepareChartData()}
+                      cx='50%'
+                      cy='50%'
+                      innerRadius={20}
+                      outerRadius={60}
+                      paddingAngle={1}
+                      dataKey='value'
+                      label={({ percent }) => `${(percent * 100).toFixed(0)}%`} // Prozent-Labels hinzufügen
+                      labelLine={false} // Keine Verbindungslinien
+                    >
+                      {prepareChartData().map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: number) => [
+                        `€${value.toFixed(2)}`,
+                        'Betrag',
+                      ]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+
+                {/* Untere Legende bleibt gleich... */}
+                <div className='mt-4 text-center text-sm'>
+                  <div className='flex justify-center gap-4'>
+                    <div className='flex items-center gap-1'>
+                      <div className='w-3 h-3 bg-red-500 rounded-full'></div>
+                      <span>
+                        €
+                        {expenses
+                          .reduce((sum, expense) => sum + expense.amount, 0)
+                          .toFixed(2)}{' '}
+                        ausgegeben
+                      </span>
+                    </div>
+                    <div className='flex items-center gap-1'>
+                      <div className='w-3 h-3 bg-green-500 rounded-full'></div>
+                      <span>
+                        €
+                        {Math.max(
+                          0,
+                          budgetItems.reduce(
+                            (sum, item) => sum + item.planned_amount,
+                            0
+                          ) -
+                            expenses.reduce(
+                              (sum, expense) => sum + expense.amount,
+                              0
+                            )
+                        ).toFixed(2)}{' '}
+                        übrig
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
