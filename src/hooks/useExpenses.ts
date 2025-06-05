@@ -22,7 +22,7 @@ interface ExpenseWithCategory extends Expense {
 
 // Hook Return Interface
 interface UseExpensesReturn {
-  expenses: ExpenseWithCategory[]; // Alle Ausgaben mit Kategorie-Info
+  expenses: ExpenseWithCategory[];
   loading: boolean;
   error: string | null;
   createExpense: (
@@ -31,6 +31,13 @@ interface UseExpensesReturn {
     description?: string,
     date?: string
   ) => Promise<void>;
+  updateExpense: (
+    expenseId: number,
+    categoryId: number,
+    amount: number,
+    description?: string,
+    date?: string
+  ) => Promise<void>; // NEU
   deleteExpense: (expenseId: number) => Promise<void>;
   getExpensesForMonth: (month: string) => Promise<void>;
   refetch: () => Promise<void>;
@@ -207,6 +214,47 @@ export function useExpenses(): UseExpensesReturn {
     [getExpensesForMonth]
   );
 
+  // Ausgabe aktualisieren
+  const updateExpense = useCallback(
+    async (
+      expenseId: number,
+      categoryId: number,
+      amount: number,
+      description?: string,
+      date?: string
+    ) => {
+      if (!user) {
+        throw new Error('Nicht eingeloggt');
+      }
+
+      try {
+        const { error } = await supabase
+          .from('expenses')
+          .update({
+            category_id: categoryId,
+            amount,
+            description: description || null,
+            expense_date: date || new Date().toISOString().split('T')[0],
+          })
+          .eq('id', expenseId);
+
+        if (error) {
+          throw error;
+        }
+
+        console.log('✅ Ausgabe aktualisiert');
+
+        // Ausgaben für aktuellen Monat neu laden
+        const currentMonth = getCurrentMonth();
+        await getExpensesForMonth(currentMonth);
+      } catch (err) {
+        console.error('❌ Fehler beim Aktualisieren der Ausgabe:', err);
+        throw err;
+      }
+    },
+    [user, getExpensesForMonth]
+  );
+
   // Beim ersten Laden: Ausgaben für aktuellen Monat
   useEffect(() => {
     const month = getCurrentMonth();
@@ -218,6 +266,7 @@ export function useExpenses(): UseExpensesReturn {
     loading,
     error,
     createExpense,
+    updateExpense, // NEU
     deleteExpense,
     getExpensesForMonth,
     refetch: () => getExpensesForMonth(getCurrentMonth()),

@@ -43,8 +43,8 @@ interface BudgetItemWithCategory extends BudgetItem {
 
 // Hook Return Interface
 interface UseMonthlyBudgetsReturn {
-  currentBudget: MonthlyBudget | null; // Budget für aktuellen Monat
-  budgetItems: BudgetItemWithCategory[]; // Budget-Items mit Kategorie-Info
+  currentBudget: MonthlyBudget | null;
+  budgetItems: BudgetItemWithCategory[];
   loading: boolean;
   error: string | null;
   createMonthlyBudget: (
@@ -58,6 +58,7 @@ interface UseMonthlyBudgetsReturn {
     amount: number
   ) => Promise<void>;
   getCurrentMonthBudget: (month: string) => Promise<void>;
+  getAvailableBudgetMonths: () => Promise<string[]>; // NEU
 }
 
 export function useMonthlyBudgets(): UseMonthlyBudgetsReturn {
@@ -260,6 +261,26 @@ export function useMonthlyBudgets(): UseMonthlyBudgetsReturn {
     [currentBudget, getCurrentMonthBudget]
   );
 
+  // Alle verfügbaren Budget-Monate laden
+  const getAvailableBudgetMonths = useCallback(async (): Promise<string[]> => {
+    if (!user) return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('monthly_budgets')
+        .select('month')
+        .eq('user_id', user.id)
+        .order('month', { ascending: false }); // Neueste zuerst
+
+      if (error) throw error;
+
+      return data?.map((item) => item.month) || [];
+    } catch (err) {
+      console.error('❌ Fehler beim Laden der verfügbaren Monate:', err);
+      return [];
+    }
+  }, [user]);
+
   // Beim ersten Laden: Aktueller Monat
   useEffect(() => {
     const month = getCurrentMonth();
@@ -275,5 +296,6 @@ export function useMonthlyBudgets(): UseMonthlyBudgetsReturn {
     updateIncome,
     setBudgetForCategory,
     getCurrentMonthBudget,
+    getAvailableBudgetMonths, // NEU
   };
 }

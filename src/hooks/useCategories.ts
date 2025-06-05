@@ -16,15 +16,22 @@ interface Category {
 
 // Was der Hook zurückgibt
 interface UseCategoriesReturn {
-  categories: Category[]; // Alle Kategorien des Users
-  loading: boolean; // Lädt gerade?
-  error: string | null; // Fehlermeldung
+  categories: Category[];
+  loading: boolean;
+  error: string | null;
   createCategory: (
     name: string,
     defaultBudget: number,
     color?: string
   ) => Promise<void>;
-  refetch: () => Promise<void>; // Kategorien neu laden
+  updateCategory: (
+    categoryId: number,
+    name: string,
+    defaultBudget: number,
+    color?: string
+  ) => Promise<void>; // NEU
+  deleteCategory: (categoryId: number) => Promise<void>; // NEU
+  refetch: () => Promise<void>;
 }
 
 export function useCategories(): UseCategoriesReturn {
@@ -106,6 +113,74 @@ export function useCategories(): UseCategoriesReturn {
     [user, fetchCategories]
   ); // Dependencies: user und fetchCategories
 
+  // Kategorie aktualisieren
+  const updateCategory = useCallback(
+    async (
+      categoryId: number,
+      name: string,
+      defaultBudget: number,
+      color?: string
+    ) => {
+      if (!user) {
+        throw new Error('Nicht eingeloggt');
+      }
+
+      try {
+        const { error } = await supabase
+          .from('categories')
+          .update({
+            name: name.trim(),
+            default_budget: defaultBudget,
+            color: color || '#3b82f6',
+          })
+          .eq('id', categoryId);
+
+        if (error) {
+          throw error;
+        }
+
+        console.log('✅ Kategorie aktualisiert');
+
+        // Kategorien neu laden
+        await fetchCategories();
+      } catch (err) {
+        console.error('❌ Fehler beim Aktualisieren der Kategorie:', err);
+        throw err;
+      }
+    },
+    [user, fetchCategories]
+  );
+
+  // Kategorie löschen (Soft Delete)
+  const deleteCategory = useCallback(
+    async (categoryId: number) => {
+      if (!user) {
+        throw new Error('Nicht eingeloggt');
+      }
+
+      try {
+        // Soft Delete: is_active auf false setzen
+        const { error } = await supabase
+          .from('categories')
+          .update({ is_active: false })
+          .eq('id', categoryId);
+
+        if (error) {
+          throw error;
+        }
+
+        console.log('✅ Kategorie gelöscht');
+
+        // Kategorien neu laden
+        await fetchCategories();
+      } catch (err) {
+        console.error('❌ Fehler beim Löschen der Kategorie:', err);
+        throw err;
+      }
+    },
+    [user, fetchCategories]
+  );
+
   // Beim ersten Laden: Kategorien abrufen
   useEffect(() => {
     fetchCategories();
@@ -116,6 +191,8 @@ export function useCategories(): UseCategoriesReturn {
     loading,
     error,
     createCategory,
-    refetch: fetchCategories, // Alias für manuelles Neu-Laden
+    updateCategory, // NEU
+    deleteCategory, // NEU
+    refetch: fetchCategories,
   };
 }
